@@ -29,12 +29,15 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 	ULONG ulSize = 0;
 	HANDLE hRegister;
 	NTSTATUS status;
-	PKEY_VALUE_FULL_INFORMATION pvfi;
 
-	//测试用变量区
+	KEY_VALUE_PARTIAL_INFORMATION try_Key_Value_Info;
+	PKEY_VALUE_PARTIAL_INFORMATION ac_Key_Value_Info;
+	
+	/* 测试用变量区
 	PKEY_FULL_INFORMATION pfi;
 	int i;
 	PKEY_BASIC_INFORMATION pbi;
+	*/
 
 	//STEP1: 获取驱动所对应的注册表键值，输出调试信息
 	//Ansi字符串初始化,strDriverRegPath表示注册表项，strDriverFilePath表示驱动文件路径
@@ -68,41 +71,9 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 	{
 		DbgPrint("[NewZwLoadDriver] ZwOpenKey %wZ Successfully",DriverServiceName);
 	}
-	/*****测试用，枚举所有子项 ***
-	status = ZwQueryKey(hRegister, KeyFullInformation, NULL, 0, &ulSize);
-	if( !NT_SUCCESS(status) )
-	{
-		DbgPrint("[NewZwLoadDriver] ZwQueryValueKey %wZ Faild - Get Size",&ustrKeyName);
-	}
-	 pfi = (PKEY_FULL_INFORMATION)ExAllocatePool(PagedPool, ulSize);
-	status = ZwQueryKey(hRegister, KeyFullInformation, pfi, ulSize, &ulSize);
-	if( !NT_SUCCESS(status) )
-	{
-		DbgPrint("[NewZwLoadDriver] ZwQueryValueKey %wZ Faild - Get Information",&ustrKeyName);
-	}
-	 for (i = 0; i < pfi->SubKeys; i++)
-	 {
-		 ZwEnumerateKey(hRegister, i, KeyBasicInformation, NULL, 0, &ulSize);
-		 pbi = (PKEY_BASIC_INFORMATION)ExAllocatePool(PagedPool, ulSize);
-  
-		 ZwEnumerateKey(hRegister, i, KeyBasicInformation, pbi, ulSize, &ulSize);
-		 ustrKeyName.Length = (USHORT)pbi->NameLength;
-		 ustrKeyName.Buffer = pbi->Name;
-		 DbgPrint("[NewZwLoadDriver] ZwEnumerateKey %wZ",&ustrKeyName);
-		 ExFreePool(pbi);
-	 }
-	 ExFreePool(pfi);
-	**测试代码结束******/
-	/* 这里正常思路是，
-	（1）Query一下，获取该键的长度（因为不是所有KEY都【等于0】（只有一项）的
-	（2）根据长度，再初始化出保存该键信息的pif，然后逐项查询
-	但是！我们懒！以下为速查方法，小技巧
-	*/
-
 	//获取长度,ulSize里保存的是长度，分配内存
-	//status = 
 
-	status = ZwQueryValueKey(hRegister,&ustrKeyName,KeyValueFullInformation,NULL,0,&ulSize);
+	status = ZwQueryValueKey(hRegister,&ustrKeyName,KeyValuePartialInformation,NULL,0,&ulSize);
 	if( status != STATUS_SUCCESS )
 	{
 		DbgPrint("[NewZwLoadDriver] ZwQueryValueKey %wZ Faild - Get Size",&ustrKeyName);
@@ -112,34 +83,25 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 		DbgPrint("[NewZwLoadDriver] ZwQueryValueKey %wZ Sucessfull - Get Size",&ustrKeyName);
 	}
 	
-	pvfi =(PKEY_VALUE_FULL_INFORMATION)ExAllocatePool(PagedPool,ulSize);
-
-	status = ZwQueryValueKey(hRegister,&ustrKeyName,KeyValueFullInformation,pvfi,ulSize,&ulSize);
-	if( status != STATUS_SUCCESS  )
+	ac_Key_Value_Info =ExAllocatePoolWithTag(NonPagedPool,ulSize,"tag1");
+	if ( ac_Key_Value_Info != NULL )
 	{
-		DbgPrint("[NewZwLoadDriver] ZwQueryValueKey %wZ Faild - Get Path",&ustrKeyName);
-	}
-	else
-	{
-		DbgPrint("[NewZwLoadDriver] ZwQueryValueKey %wZ Successful - Get Path",&ustrKeyName);
-	}
-	//【注意！这里传递给R3的时候应该改成ANSI格式的！】
-	/*
-	ustrKeyName.Length = (USHORT)pvfi->NameLength;
-    ustrKeyName.Buffer = pvfi->Name;
-	*/
-	ustrKeyName.Length = (USHORT)pvfi->NameLength;
-    ustrKeyName.Buffer = (pvfi + pvfi->DataOffset);
-	DbgPrint("[NewZwLoadDriver] The Driver File Path : %wZ.\n", &ustrKeyName);
-
-	//释放内存
-	ExFreePool(pvfi);
+			status = ZwQueryValueKey(hRegister,&ustrKeyName,KeyValuePartialInformation,ac_Key_Value_Info,ulSize,&ulSize);
+			if( status != STATUS_SUCCESS  )
+			{
+				DbgPrint("[NewZwLoadDriver] ZwQueryValueKey %wZ Faild - Get Path",&ustrKeyName);
+			}
+			else
+			{
+				DbgPrint("[NewZwLoadDriver] ZwQueryValueKey %wZ Successful - Get Path",&ustrKeyName);
+			}
+			//这么做加减的主要目的是为了去除" /??// " 这个字符串
+			ustrKeyName.Length = (ac_Key_Value_Info->DataLength );
+			ustrKeyName.Buffer = (ac_Key_Value_Info->Data );
+			DbgPrint("[NewZwLoadDriver] The Driver File Path : %wZ.\n",&ustrKeyName);
+			ExFreePool(ac_Key_Value_Info);
+	}	
 	
-
-	/* 瞎释放导致蓝屏 */
-	//RtlFreeAnsiString(&strDriverFilePath);
-	//RtlFreeAnsiString(&strDriverRegPath);
-	//RtlFreeUnicodeString(&ustrKeyName);
 	ntStatus = ( (ZWLOADDRIVER)(OldZwLoadDriver) )(DriverServiceName);
 	return ntStatus;
 }
