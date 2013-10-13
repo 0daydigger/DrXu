@@ -31,6 +31,10 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 	NTSTATUS status;
 	PKEY_VALUE_FULL_INFORMATION pvfi;
 
+	//测试用变量区
+	PKEY_FULL_INFORMATION pfi;
+	PKEY_BASIC_INFORMATION pbi;
+
 	//STEP1: 获取驱动所对应的注册表键值，输出调试信息
 	//Ansi字符串初始化,strDriverRegPath表示注册表项，strDriverFilePath表示驱动文件路径
 	RtlInitAnsiString(&strDriverRegPath,"");
@@ -60,7 +64,24 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 		DbgPrint("[NewZwLoadDriver] ZwOpenKey %wZ Faild",DriverServiceName);
 	}
 	DbgPrint("[NewZwLoadDriver] ZwOpenKey %wZ Successfully",DriverServiceName);
-
+	/*****测试用，枚举所有子项 ****/
+	 status = ZwOpenKey(&hRegister, KEY_READ, &obj_attrib);
+  
+	 ZwQueryKey(hRegister, KeyFullInformation, NULL, 0, &ulSize);
+	 pfi = (PKEY_FULL_INFORMATION)ExAllocatePool(PagedPool, ulSize);
+	 ZwQueryKey(hRegister, KeyFullInformation, pfi, ulSize, &ulSize);
+	 for (i = 0; i < pfi->SubKeys; i++)
+	 {
+		 ZwEnumerateKey(hRegister, i, KeyBasicInformation, NULL, 0, &ulSize);
+		 pbi = (PKEY_BASIC_INFORMATION)ExAllocatePool(PagedPool, ulSize);
+  
+		 ZwEnumerateKey(hRegister, i, KeyBasicInformation, pbi, ulSize, &ulSize);
+		 ustrKeyName.Length = (USHORT)pbi->NameLength;
+		 ustrKeyName.Buffer = pbi->Name;
+		 ExFreePool(pbi);
+	 }
+	 ExFreePool(pfi);
+	/****测试代码结束******/
 	/* 这里正常思路是，
 	（1）Query一下，获取该键的长度（因为不是所有KEY都【等于0】（只有一项）的
 	（2）根据长度，再初始化出保存该键信息的pif，然后逐项查询
@@ -70,6 +91,7 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 	//获取长度,ulSize里保存的是长度，分配内存
 	//status = 
 
+	/*
 	status = ZwQueryValueKey(hRegister,&ustrKeyName,KeyValueFullInformation,NULL,0,&ulSize);
 	if( !NT_SUCCESS(status) )
 	{
@@ -89,6 +111,7 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 
 	//释放内存
 	ExFreePool(pvfi);
+	*/
 	
 
 	/* 瞎释放导致蓝屏 */
