@@ -14,7 +14,10 @@ extern ZWLOADDRIVER OldZwLoadDriver;
 
 //新LoadDriver入口
 /*
-调试蓝屏次数：6
+调试蓝屏次数：16
+最终排查原因：
+ReleaseANSIString和ReleaseUnicodeString在系统中【未必】就没释放
+换言之，如果已经释放你又Release，喝喝，恭喜你，死定了。
 */
 NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 {
@@ -36,10 +39,10 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 	//这个初始化值可以随便写，我们只是写成ImagePath方便以后我们查询Index
 
 	//这里一定加L！不加蓝死你
-	//RtlInitUnicodeString(&ustrKeyName,L"ImagePath");
+	RtlInitUnicodeString(&ustrKeyName,L"ImagePath");
 
 	DbgPrint("Dr.Xu's gentlmen sword:ZwLoadDriver called.\n");
-	/*																//该参数为TRUE要记得释放！
+																	//该参数为TRUE要记得释放！【此处释放可导致蓝屏】
 	RtlUnicodeStringToAnsiString(&strDriverRegPath,DriverServiceName,TRUE);
 	DbgPrint("The DriverServiceName is %s",strDriverRegPath.Buffer);
 
@@ -57,7 +60,7 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 		DbgPrint("[NewZwLoadDriver] ZwOpenKey %wZ Faild",DriverServiceName);
 	}
 	DbgPrint("[NewZwLoadDriver] ZwOpenKey %wZ Successfully",DriverServiceName);
-	*/
+
 	/* 这里正常思路是，
 	（1）Query一下，获取该键的长度（因为不是所有KEY都【等于0】（只有一项）的
 	（2）根据长度，再初始化出保存该键信息的pif，然后逐项查询
@@ -66,7 +69,7 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 
 	//获取长度,ulSize里保存的是长度，分配内存
 	//status = 
-	/*
+
 	status = ZwQueryValueKey(hRegister,&ustrKeyName,KeyValueFullInformation,NULL,0,&ulSize);
 	if( !NT_SUCCESS(status) )
 	{
@@ -82,14 +85,15 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 		DbgPrint("[NewZwLoadDriver] ZwQueryValueKey %wZ Faild - Get Path",&ustrKeyName);
 	}
 	//【注意！这里传递给R3的时候应该改成ANSI格式的！】
-	DbgPrint(("[NewZwLoadDriver] The Driver File Path : %wZ.\n", &ustrKeyName));
-	*/
+	DbgPrint("[NewZwLoadDriver] The Driver File Path : %wZ.\n", &ustrKeyName);
 
 	//释放内存
-	//ExFreePool(pvfi);
+	ExFreePool(pvfi);
 	
-	RtlFreeAnsiString(&strDriverFilePath);
-	RtlFreeAnsiString(&strDriverRegPath);
+
+	/* 瞎释放导致蓝屏 */
+	//RtlFreeAnsiString(&strDriverFilePath);
+	//RtlFreeAnsiString(&strDriverRegPath);
 	//RtlFreeUnicodeString(&ustrKeyName);
 	ntStatus = ( (ZWLOADDRIVER)(OldZwLoadDriver) )(DriverServiceName);
 	return ntStatus;
