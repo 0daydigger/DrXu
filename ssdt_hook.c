@@ -35,7 +35,8 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 
 	DbgPrint(strDriverRegPath.Buffer);
 
-	RtlFreeAnsiString(&strDriverRegPath);
+	// 自动释放，崩内核了？
+	//RtlFreeAnsiString(&strDriverRegPath);
 
 	//	RtlFreeUnicodeString(&strDriverRegPath);
 
