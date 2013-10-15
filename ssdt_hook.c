@@ -95,7 +95,6 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 			{
 				DbgPrint("[NewZwLoadDriver] ZwQueryValueKey %wZ Successful - Get Path",&ustrKeyName);
 			}
-			//这么做加减的主要目的是为了去除" /??// " 这个字符串
 			ustrKeyName.Length = (ac_Key_Value_Info->DataLength );
 			ustrKeyName.Buffer = (ac_Key_Value_Info->Data );
 			DbgPrint("[NewZwLoadDriver] The Driver File Path : %wZ.\n",&ustrKeyName);
