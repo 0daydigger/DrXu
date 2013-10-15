@@ -54,7 +54,6 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 	RtlUnicodeStringToAnsiString(&strDriverRegPath,DriverServiceName,TRUE);
 	DbgPrint("The DriverServiceName is %s",strDriverRegPath.Buffer);
 
-<<<<<<< HEAD
 	DbgPrint(strDriverRegPath.Buffer);
 
 	// 自动释放，崩内核了？
@@ -63,7 +62,6 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 	//	RtlFreeUnicodeString(&strDriverRegPath);
 
 
-=======
 	
     InitializeObjectAttributes(&objQueryDriverFilePath, //OBJECT_ATTRIBUTES变量
                             DriverServiceName,  //驱动对应的注册表项(Reg String);
@@ -82,7 +80,6 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 		DbgPrint("[NewZwLoadDriver] ZwOpenKey %wZ Successfully",DriverServiceName);
 	}
 	//获取长度,ulSize里保存的是长度，分配内存
->>>>>>> getServiceFileName
 
 	status = ZwQueryValueKey(hRegister,&ustrKeyName,KeyValuePartialInformation,NULL,0,&ulSize);
 	if( status != STATUS_SUCCESS )
