@@ -44,6 +44,8 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
 	theDriverObject->DriverUnload = OnUnload;
 	DbgPrint("Dr.Xu's Gentlmen sword on loading...");
 
+	
+	/* 修改SSDT表内存属性  */
 	//从SSDT读取原函数内存地址
 	OldZwLoadDriver = (ZWLOADDRIVER)(SYSTEMSERVICE(ZwLoadDriver));
 
@@ -65,7 +67,7 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
 
 	MappedSystemCallTable = MmMapLockedPages(g_pmdlSystemCall, KernelMode);
 	
-	//修改完毕
+	/* 修改完毕  */
 
 
 	//HOOK
