@@ -8,6 +8,10 @@
 #include <ssdt_hook.h>
 #endif
 
+#ifndef _drxu_constant_
+#define _drxu_constant_
+#include <drxu_constant.h>
+#endif
 
 __declspec(dllimport) SSDT_Entry KeServiceDescriptorTable;
 
@@ -55,13 +59,16 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
 	RtlInitUnicodeString(&deviceNameUnicodeString,
 							deviceNameBuffer);
 	RtlInitUnicodeString(&deviceLinkUnicodeString,
-							deviceLinkBUffer);
+							deviceLinkBuffer);
+	//创建设备
 	ntStatus = IoCreateDevice(theDriverObject,0,
 						      &deviceNameUnicodeString,
-							  FILE_DEVICE_ROOTKIT,
+							  //defined in drxu_constant.h, value = 0x19930410
+							  FILE_DEVICE_DRXU,
 							  0,
 							  TRUE,
 							  &g_DrXuDevice);
+	//创建设备成功的话，保存symbolic link
 	if( NT_SUCCESS(ntStatus) )
 	{
 		ntStatus = IoCreateSymbolicLink(&deviceLinkUnicodeString,
