@@ -73,36 +73,6 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName);
 
 
 /*定义区结束*/
-/*
-这些在ntdll里面已经有定义了，放在这里是为了方便看。
-懒得查手册，懒！
-typedef struct _MDL{
-	struct _MDL *Next;
-	CSHORT Size;
-	CSHORT MdlFlags;
-	struct _EPROCESS *Process;
-	PVOID MappedSystemVa;
-	PVOID StartVa;
-	ULONG ByteCount;
-	ULONG ByteOffset;
-}MDL,*PMDL; 
-//MDL FLAGS
-#define MDL_MAPPED_TO_SYSTEM_VA		 0x0001
-#define MDL_PAGES_LOCKED			 0x0002
-#define MDL_SOURCE_IS_NONPAGED_POOL	 0x0004
-#define MDL_ALLOCATED_FIXED_SIZE	 0x0008
-#define MDL_PARTIAL					 0x0010
-#define MDL_PARTIAL_HAS_BEEN_MAPPED	 0x0020
-#define MDL_IO_PAGE_READ			 0x0040
-#define MDL_WRITE_OPERATION			 0x0080
-#define MDL_PARENT_MAPPED_SYSTEM_VA  0x0100
-#define MDL_LOCK_HELD				 0x0200
-#define MDL_PHYSICAL_VIEW			 0x0400
-#define MDL_IO_SPACE				 0x0800
-#define MDL_NETWORK_HEADER			 0x1000
-#define MDL_MAPPING_CAN_FAIL		 0x2000
-#define MDL_ALLOCATED_MUST_SUCCEED	 0x4000
-*/
 
 
 

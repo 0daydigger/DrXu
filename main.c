@@ -16,6 +16,12 @@ PVOID *MappedSystemCallTable;
 //在这里声明要HOOK的函数
 ZWLOADDRIVER OldZwLoadDriver;
 
+//注册Symbolic Link要用的参数
+
+const WCHAR deviceLinkBuffer[] = L"\\DosDevices\\Drxu";
+const WCHAR deviceNameBuffer[] = L"\\Device\\Drxu";
+PDEVICE_OBJECT g_DrXuDevice;
+
 //驱动卸载回调
 VOID OnUnload(IN PDRIVER_OBJECT DriverObject)
 {
@@ -38,12 +44,34 @@ VOID OnUnload(IN PDRIVER_OBJECT DriverObject)
 NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
 					 IN PUNICODE_STRING theRegistryPath)
 {
-	//驱动入口
-	
-	//注册卸载例程
+	//变量区开始
+	NTSTATUS ntStatus;
+	UNICODE_STRING deviceNameUnicodeString;
+	UNICODE_STRING deviceLinkUnicodeString;
+	//变量区结束
 	theDriverObject->DriverUnload = OnUnload;
 	DbgPrint("Dr.Xu's Gentlmen sword on loading...");
-
+	/* Regedit Symbolic Link */
+	RtlInitUnicodeString(&deviceNameUnicodeString,
+							deviceNameBuffer);
+	RtlInitUnicodeString(&deviceLinkUnicodeString,
+							deviceLinkBUffer);
+	ntStatus = IoCreateDevice(theDriverObject,0,
+						      &deviceNameUnicodeString,
+							  FILE_DEVICE_ROOTKIT,
+							  0,
+							  TRUE,
+							  &g_DrXuDevice);
+	if( NT_SUCCESS(ntStatus) )
+	{
+		ntStatus = IoCreateSymbolicLink(&deviceLinkUnicodeString,
+									    &deviceNameUnicodeString);
+	}
+	
+	
+	
+	/* Regedit over */
+	
 	
 	/* 修改SSDT表内存属性  */
 	//从SSDT读取原函数内存地址
@@ -70,8 +98,8 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
 	/* 修改完毕  */
 
 
-	//HOOK
+	/* 开始 HOOK，直接CALL宏，没问题 */
 	HOOK_SYSCALL(ZwLoadDriver,NewZwLoadDriver,OldZwLoadDriver);
-
-	return STATUS_SUCCESS;
+	/* Hook结束 */
+	return ntStatus;
 }
