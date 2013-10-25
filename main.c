@@ -22,7 +22,7 @@ ZWLOADDRIVER OldZwLoadDriver;
 
 //注册Symbolic Link要用的参数
 
-const WCHAR deviceLinkBuffer[] = L"\\DosDevices\\Drxu";
+const WCHAR deviceLinkBuffer[] = L"\\??\\DrXu";
 const WCHAR deviceNameBuffer[] = L"\\Device\\Drxu";
 PDEVICE_OBJECT g_DrXuDevice;
 
@@ -61,7 +61,8 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
 	RtlInitUnicodeString(&deviceLinkUnicodeString,
 							deviceLinkBuffer);
 	//创建设备
-	ntStatus = IoCreateDevice(theDriverObject,0,
+	ntStatus = IoCreateDevice(theDriverObject,
+							  0,
 						      &deviceNameUnicodeString,
 							  //defined in drxu_constant.h, value = 0x19930410
 							  FILE_DEVICE_DRXU,
@@ -71,8 +72,13 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
 	//创建设备成功的话，保存symbolic link
 	if( NT_SUCCESS(ntStatus) )
 	{
+		DbgPrint("Create Symbolic Link");
 		ntStatus = IoCreateSymbolicLink(&deviceLinkUnicodeString,
 									    &deviceNameUnicodeString);
+		if( NT_SUCCESS(ntStatus) )
+		{
+			DbgPrint("[DriverEntry]Symbolic Link Created,The Name is %wZ", &deviceLinkUnicodeString);
+		}
 	}
 	
 	
