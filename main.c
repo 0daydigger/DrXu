@@ -84,6 +84,10 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
 	{
 		theDriverObject->MajorFunction[i] = OnStubDispatch;
 	}
+	/* 烂事儿交给 MajorFunction去做，我们这里只用DrXuIoDispatch通信 */
+	
+	theDriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = DrXuIoDispatch;
+	
 	/* IRP调度分管结束 */
 	
 

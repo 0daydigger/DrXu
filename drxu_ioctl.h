@@ -1,1 +1,7 @@
 NTSTATUS OnStubDispatch(IN PDEVICE_OBJECT DeviceObject,IN PIRP Irp );
+NTSTATUS DrXuIoDispatch(IN PDEVICE_OBJECT DeviceObject,IN PIRP Irp );
+
+/* ioctl调度消息 */
+
+#define IOCTL_TEST \
+            CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS)
