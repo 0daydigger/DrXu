@@ -13,6 +13,10 @@
 #include <drxu_constant.h>
 #endif
 
+#ifndef _drxu_ioctl_
+#define _drxu_ioctl_
+#include <drxu_ioctl.h>
+#endif
 __declspec(dllimport) SSDT_Entry KeServiceDescriptorTable;
 
 PMDL g_pmdlSystemCall;
@@ -25,14 +29,33 @@ PDEVICE_OBJECT g_DrXuDevice;
 
 //驱动卸载回调
 VOID OnUnload(IN PDRIVER_OBJECT DriverObject)
-{
+{   
+	/*删除符号链接用的变量*/
+    UNICODE_STRING usSymLinkName;
+    PDEVICE_OBJECT pDeviceObjectTemp1=NULL;
+    PDEVICE_OBJECT pDeviceObjectTemp2=NULL;
+	
+	
 	DbgPrint("Dr.Xu's Gentlmen Sword:Quiting...");
 
+	//删除符号链接
+    RtlInitUnicodeString(&usSymLinkName,deviceLinkBuffer);
+    IoDeleteSymbolicLink(&usSymLinkName);
+ 
+	/* 删除设备 */
+    if (DriverObject)
+    {
+        pDeviceObjectTemp1=DriverObject->DeviceObject;
+        while (pDeviceObjectTemp1)
+        {
+            pDeviceObjectTemp2=pDeviceObjectTemp1;
+            pDeviceObjectTemp1=pDeviceObjectTemp1->NextDevice;//下一个设备
+            IoDeleteDevice(pDeviceObjectTemp2);//删除设备
+        }
+    }
 
 	//脱钩子，所有被钩的函数都要在这里恢复
 	UNHOOK_SYSCALL(ZwLoadDriver,OldZwLoadDriver,NewZwLoadDriver);
-
-
 
 	//如果之前取得过SSDT地址，那么这里要把映射取消
 	if(g_pmdlSystemCall)
@@ -40,14 +63,6 @@ VOID OnUnload(IN PDRIVER_OBJECT DriverObject)
 		MmUnmapLockedPages(MappedSystemCallTable,g_pmdlSystemCall);
 		IoFreeMdl(g_pmdlSystemCall);
 	}
-}
-NTSTATUS OnStubDispatch(IN PDEVICE_OBJECT DeviceObject,
-						IN PIRP Irp )
-{
-	Irp->IoStatus.Status = STATUS_SUCCESS;
-	IoCompleteRequest(Irp,
-					  IO_NO_INCREMENT );
-	return STATUS_SUCCESS;
 }
 NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
 					 IN PUNICODE_STRING theRegistryPath)
@@ -72,7 +87,7 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
 	/* IRP调度分管结束 */
 	
 
-	/* Regedit Symbolic Link */
+	/* 创建符号链接 */
 	RtlInitUnicodeString(&deviceNameUnicodeString,
 							deviceNameBuffer);
 	RtlInitUnicodeString(&deviceLinkUnicodeString,
@@ -86,7 +101,7 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
 							  0,
 							  TRUE,
 							  &g_DrXuDevice);
-	//创建设备成功的话，保存symbolic link
+	//创建设备成功的话，保存符号链接
 	if( NT_SUCCESS(ntStatus) )
 	{
 		DbgPrint("Create Symbolic Link");
@@ -100,7 +115,7 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
 	
 	
 	
-	/* Regedit over */
+	/* 注册设备和创建符号链接完毕 */
 	
 	
 	/* 修改SSDT表内存属性  */
