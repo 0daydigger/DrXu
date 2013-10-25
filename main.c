@@ -20,10 +20,7 @@ PVOID *MappedSystemCallTable;
 //在这里声明要HOOK的函数
 ZWLOADDRIVER OldZwLoadDriver;
 
-//注册Symbolic Link要用的参数
 
-const WCHAR deviceLinkBuffer[] = L"\\??\\DrXu";
-const WCHAR deviceNameBuffer[] = L"\\Device\\Drxu";
 PDEVICE_OBJECT g_DrXuDevice;
 
 //驱动卸载回调
@@ -44,7 +41,14 @@ VOID OnUnload(IN PDRIVER_OBJECT DriverObject)
 		IoFreeMdl(g_pmdlSystemCall);
 	}
 }
-
+NTSTATUS OnStubDispatch(IN PDEVICE_OBJECT DeviceObject,
+						IN PIRP Irp )
+{
+	Irp->IoStatus.Status = STATUS_SUCCESS;
+	IoCompleteRequest(Irp,
+					  IO_NO_INCREMENT );
+	return STATUS_SUCCESS;
+}
 NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
 					 IN PUNICODE_STRING theRegistryPath)
 {
@@ -52,9 +56,22 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
 	NTSTATUS ntStatus;
 	UNICODE_STRING deviceNameUnicodeString;
 	UNICODE_STRING deviceLinkUnicodeString;
+	int i;
 	//变量区结束
+	/*  加载提示信息 */
 	theDriverObject->DriverUnload = OnUnload;
 	DbgPrint("Dr.Xu's Gentlmen sword on loading...");
+	
+	/*  分管IRP调度 
+		注意：这里的所有调度就写成了一个函数，实际应该写成多个。
+	*/
+	for(i=0;i< IRP_MJ_MAXIMUM_FUNCTION; i++ )
+	{
+		theDriverObject->MajorFunction[i] = OnStubDispatch;
+	}
+	/* IRP调度分管结束 */
+	
+
 	/* Regedit Symbolic Link */
 	RtlInitUnicodeString(&deviceNameUnicodeString,
 							deviceNameBuffer);
