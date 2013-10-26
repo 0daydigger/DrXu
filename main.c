@@ -17,6 +17,7 @@
 #define _drxu_ioctl_
 #include <drxu_ioctl.h>
 #endif
+
 __declspec(dllimport) SSDT_Entry KeServiceDescriptorTable;
 
 PMDL g_pmdlSystemCall;
