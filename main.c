@@ -39,6 +39,24 @@ VOID OnUnload(IN PDRIVER_OBJECT DriverObject)
 	
 	DbgPrint("Dr.Xu's Gentlmen Sword:Quiting...");
 
+	if (EventNtLoadDriverNameHandleFromApp != NULL) {
+		DbgPrint("[EventNtLoadDriverNameHandleFromApp]App Handle Closed");
+		ZwClose(EventNtLoadDriverNameHandleFromApp);
+	}
+	else
+	{
+		DbgPrint("[EventNtLoadDriverNameHandleFromApp]NULL!");
+	}
+
+    if (NtLoadDriverEvent != NULL) {
+	//减少引用次数否则这个事件这辈子你都删不掉。
+		DbgPrint("[NtLoadDriverEvent] reference decreased");
+        ObDereferenceObject(NtLoadDriverEvent);
+    }
+	else
+	{
+		DbgPrint("[NtLoadDriverEvent]NULL!");
+	}
 	//删除符号链接
     RtlInitUnicodeString(&usSymLinkName,deviceLinkBuffer);
     IoDeleteSymbolicLink(&usSymLinkName);
@@ -54,7 +72,8 @@ VOID OnUnload(IN PDRIVER_OBJECT DriverObject)
             IoDeleteDevice(pDeviceObjectTemp2);//删除设备
         }
     }
-
+	DbgPrint("Device Deleted");
+	
 	//脱钩子，所有被钩的函数都要在这里恢复
 	UNHOOK_SYSCALL(ZwLoadDriver,OldZwLoadDriver,NewZwLoadDriver);
 
@@ -64,6 +83,9 @@ VOID OnUnload(IN PDRIVER_OBJECT DriverObject)
 		MmUnmapLockedPages(MappedSystemCallTable,g_pmdlSystemCall);
 		IoFreeMdl(g_pmdlSystemCall);
 	}
+	DbgPrint("SSDT Unhooked");
+	
+	DbgPrint("Quit");
 }
 NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
 					 IN PUNICODE_STRING theRegistryPath)
