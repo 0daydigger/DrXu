@@ -9,9 +9,12 @@
 #endif
 /* 在这里声明HOOK的函数，用extern修饰，真正函数变量在main.c里 */
 extern ZWLOADDRIVER OldZwLoadDriver;
-
+extern PKEVENT		NtLoadDriverEvent;
+extern KEVENT NtLoadDriverIsAllowedEvent; // in drxu_ioctl.c
 #define BUFFER_SIZE 1024
 
+
+int bNtLoadDriverIsAllowedToRun = 0;
 //新LoadDriver入口
 /*
 调试蓝屏次数：16
@@ -24,6 +27,7 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 	NTSTATUS ntStatus;
 	ANSI_STRING strDriverRegPath;
 	ANSI_STRING strDriverFilePath;
+	
 	OBJECT_ATTRIBUTES objQueryDriverFilePath;
 	UNICODE_STRING ustrKeyName;
 	ULONG ulSize = 0;
@@ -43,6 +47,7 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 	//Ansi字符串初始化,strDriverRegPath表示注册表项，strDriverFilePath表示驱动文件路径
 	RtlInitAnsiString(&strDriverRegPath,"");
 	RtlInitAnsiString(&strDriverFilePath,"");
+	RtlInitAnsiString(&strToApp_DriverPath,"");
 	//查询对应驱动名称指定的驱动文件。 ImagePath为对应的路径，保存在strDriverFilePath中
 	//这个初始化值可以随便写，我们只是写成ImagePath方便以后我们查询Index
 
@@ -108,7 +113,28 @@ NTSTATUS NewZwLoadDriver(IN PUNICODE_STRING DriverServiceName)
 			DbgPrint("[NewZwLoadDriver] The Driver File Path : %wZ.\n",&ustrKeyName);
 			ExFreePool(ac_Key_Value_Info);
 	}	
+	// TODO:事件通知应用有调用，然后驱动信息。
 	
-	ntStatus = ( (ZWLOADDRIVER)(OldZwLoadDriver) )(DriverServiceName);
+	//这里注意，这里是一个映射关系，如果ustrToApp_NtLoadDriverName改变了，ustrKeyName也会改变
+	//RtlInitUnicodeString(&ustrToApp_NtLoadDriverName,&ustrKeyName);
+	RtlUnicodeStringToAnsiString(&strToApp_DriverPath,&ustrKeyName,TRUE);
+	//设置信号，应用得到通知
+	KeSetEvent(NtLoadDriverEvent,0,FALSE);
+	/*
+		1、这时候应用发送IOCTL_DRXU_DRIVERNAME_REQUEST
+		2、在DeviceIoRequest里返回给应用DRIVER路径，第二个事件在这里要挂起。
+		3、应用发送IOCTL_DRXU_DRIVERLOAD_REQUEST
+		4、在DeviceIoRequest里判断应用返回的消息，如果是TRUE那么布尔开关就是TRUE
+		5、如果是FALSE那么布尔开关就是false，IORequest里面执行KeSetEvent让这里继续执行
+	*/
+	//等待应用层通知
+	KeWaitForSingleObject(&NtLoadDriverIsAllowedEvent, Executive, KernelMode, FALSE, 0);
+	//判断
+	if ( bNtLoadDriverIsAllowedToRun )
+		ntStatus = ( (ZWLOADDRIVER)(OldZwLoadDriver) )(DriverServiceName);
+	else
+		ntStatus = STATUS_UNSUCCESSFUL;
+	//重置事件状态
+	KeResetEvent(&NtLoadDriverIsAllowedEvent);
 	return ntStatus;
 }

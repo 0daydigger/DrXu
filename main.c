@@ -27,7 +27,7 @@ ZWLOADDRIVER OldZwLoadDriver;
 
 
 PDEVICE_OBJECT g_DrXuDevice;
-
+extern KEVENT		NtLoadDriverIsAllowedEvent;
 //驱动卸载回调
 VOID OnUnload(IN PDRIVER_OBJECT DriverObject)
 {   
@@ -144,6 +144,12 @@ NTSTATUS DriverEntry(IN PDRIVER_OBJECT theDriverObject,
 	
 	/* 注册设备和创建符号链接完毕 */
 	
+	/* 设置内核事件属性 */
+	 DbgPrint("[SYSTEM]DriverEntry:Initiallize NtLoadDriverIsAllowedEvent");
+	 KeInitializeEvent(&NtLoadDriverIsAllowedEvent,SynchronizationEvent,FALSE);
+	 DbgPrint("[SYSTEM]DriverEntry:NtLoadDriverIsAllowedEvent has been initiallized");
+	 
+	 
 	
 	/* 修改SSDT表内存属性  */
 	//从SSDT读取原函数内存地址

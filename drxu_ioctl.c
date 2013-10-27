@@ -9,7 +9,10 @@
 #endif
 
 PKEVENT		NtLoadDriverEvent = NULL;
-
+KEVENT		NtLoadDriverIsAllowedEvent;
+extern int bNtLoadDriverIsAllowedToRun;
+// in ssdt_hook.h line 54
+extern ANSI_STRING strToApp_DriverPath;
 NTSTATUS OnStubDispatch(IN PDEVICE_OBJECT DeviceObject,
 						IN PIRP Irp )
 {
@@ -60,10 +63,32 @@ NTSTATUS DrXuIoDispatch(IN PDEVICE_OBJECT DeviceObject,
 			
 			Irp->IoStatus.Information = outBufLength;
 			break;
+		case IOCTL_DRXU_DRIVERLOAD_REQUEST:
+			//应用程序返回判定结果的过程
+			DbgPrint("[DrXuIoDispatch]IOCTL_DRXU_DRIVERLOAD_REQUEST Entered,ioControlCode: 0x%X", ioControlCode);
+			InputBuffer = (UCHAR *)Irp->AssociatedIrp.SystemBuffer;
+			if ( InputBuffer[0] != 0 )
+			{
+				bNtLoadDriverIsAllowedToRun = 1;
+			}
+			else
+			{
+				bNtLoadDriverIsAllowedToRun = 0;
+			}
+			//这里KeSetEvent让被挂住的NtDllLoader继续执行！
+			KeSetEvent(&NtLoadDriverIsAllowedEvent,0,FALSE);
+			break;
+		case IOCTL_DRXU_DRIVERNAME_REQUEST:
+			//应用程序获取驱动名称的过程
+			DbgPrint("[DrXuIoDispatch]IOCTL_DRXU_DRIVERNAME_REQUEST Entered,ioControlCode: 0x%X", ioControlCode);
+			OutputBuffer = (UCHAR *)Irp->AssociatedIrp.SystemBuffer;
+			memcpy(OutputBuffer, strToApp_DriverPath.Buffer, strToApp_DriverPath.Length);
+			Irp->IoStatus.Information = outBufLength;
+			//这里的事件唤醒不应该是驱动唤醒驱动，应该是应用唤醒驱动，所以说那个事件还得是应用来唤醒
+			break;
 		case IOCTL_DRXU_OPEN_EVENT_NtLoadDriver:
 			RtlInitUnicodeString(&EventNtLoadDriverName,L"\\BaseNamedObjects\\eventNtLoadDriver");
 			NtLoadDriverEvent = IoCreateNotificationEvent(&EventNtLoadDriverName,&EventNtLoadDriverNameHandleFromApp);
-			
 			
 			if (NtLoadDriverEvent != NULL)
 			{
@@ -71,7 +96,7 @@ NTSTATUS DrXuIoDispatch(IN PDEVICE_OBJECT DeviceObject,
 				ObReferenceObject(NtLoadDriverEvent); //增加引用次数防止意外发生
 				
 				//TODO:在这里测试用意，先试试看能不能set好啦！
-				KeSetEvent(NtLoadDriverEvent,0,FALSE);//激活事件。
+				//KeSetEvent(NtLoadDriverEvent,0,FALSE);//激活事件。
 				DbgPrint("[DRXU_SYSTEM]:Event has been set!");
 				Status = STATUS_SUCCESS;
 			}

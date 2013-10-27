@@ -9,6 +9,12 @@
 //传递NtLoadDriver事件
 #define IOCTL_DRXU_OPEN_EVENT_NtLoadDriver CTL_CODE(FILE_DEVICE_DRXU, 0x803, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
+//应用获取要加载的驱动路径
+#define IOCTL_DRXU_DRIVERNAME_REQUEST CTL_CODE(FILE_DEVICE_DRXU, 0x804, METHOD_BUFFERED, FILE_ANY_ACCESS)
+//应用发送IOCTL_DRXU_DRIVERLOAD_REQUEST，亦即是否允许加载
+#define IOCTL_DRXU_DRIVERLOAD_REQUEST CTL_CODE(FILE_DEVICE_DRXU, 0x805, METHOD_BUFFERED, FILE_ANY_ACCESS)
+
+
 //创建时负责接管IRP调度的函数，We don't care
 NTSTATUS OnStubDispatch(IN PDEVICE_OBJECT DeviceObject,IN PIRP Irp );
 //通信函数，必须care了这个，主要负责通信调度
@@ -17,6 +23,6 @@ NTSTATUS DrXuIoDispatch(IN PDEVICE_OBJECT DeviceObject,IN PIRP Irp );
 //负责传递NtLoadDriver Call事件的事件句柄
 UNICODE_STRING	   EventNtLoadDriverName;
 //应用层对应句柄,SharedEventHandle
-HANDLE		EventNtLoadDriverNameHandleFromApp;
+HANDLE		       EventNtLoadDriverNameHandleFromApp;
 //SharedEvent
-extern PKEVENT		NtLoadDriverEvent;
+extern PKEVENT	   NtLoadDriverEvent;

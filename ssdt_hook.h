@@ -51,6 +51,9 @@ typedef struct ServiceDescriptorEntry{
 	&MappedSystemCallTable[SYSCALL_INDEX(_Func)],(LONG) _Hook)
 
 
+ANSI_STRING strToApp_DriverPath;
+
+
 typedef NTSTATUS (__stdcall *ZWLOADDRIVER)( IN PUNICODE_STRING DriverServiceName);
 
 /* 
